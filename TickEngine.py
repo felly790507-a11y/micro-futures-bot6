@@ -126,7 +126,6 @@ class TickEngine:
         # 剛進場冷卻
         if self.state.just_entered(seconds=3):
             return
-
         # 出場判斷（順序：硬停損／動態停損／鎖利／時間／不續抱）
         if self.state.should_stoploss(price, tick.get("atr", 0)):
             print(f"[STOPLOSS] Triggered @ {price}")
@@ -134,31 +133,36 @@ class TickEngine:
             self.state.exit(price)
             if self.tick_recorder:
                 self.tick_recorder.force_flush()
+
         elif self.state.should_takeprofit(price, tick.get("atr", 0)):
             print(f"[TAKEPROFIT] Triggered @ {price}")
             self.logger.log("TAKEPROFIT", self.state.get_status(), price, tick)
             self.state.exit(price)
             if self.tick_recorder:
                 self.tick_recorder.force_flush()
-        elif self.state.should_lock_profit(tick, price):
+
+        elif hasattr(self.state, "should_lock_profit") and self.state.should_lock_profit(tick, price):
             print(f"[LOCK] 指標轉弱或價格回落，獲利鎖定 @ {price}")
             self.logger.log("LOCK_PROFIT", self.state.get_status(), price, tick)
             self.state.exit(price)
             if self.tick_recorder:
                 self.tick_recorder.force_flush()
+
         elif self.state.should_exit_by_tick():
             print(f"[TIME_EXIT] 超過最大持倉 tick，自動出場 @ {price}")
             self.logger.log("TIME_EXIT", self.state.get_status(), price, tick)
             self.state.exit(price)
             if self.tick_recorder:
                 self.tick_recorder.force_flush()
+
         elif not self.state.should_hold():
             print(f"[EXIT] 不續抱，準備出場 @ {price}")
             self.logger.log("EXIT", self.state.get_status(), price, tick)
             self.state.exit(price)
             if self.tick_recorder:
                 self.tick_recorder.force_flush()
-        elif self.state.should_add(price, tick):
+
+        elif hasattr(self.state, "should_add") and self.state.should_add(price, tick):
             print("[ADD] 加碼條件成立")
             self.state.current_position_size += 1
             self.logger.log("ADD", self.state.get_status(), price, tick)
